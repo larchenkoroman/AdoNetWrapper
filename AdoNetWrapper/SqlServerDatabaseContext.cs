@@ -29,14 +29,7 @@ public class SqlServerDatabaseContext : DatabaseContext
     public override IDbCommand CreateCommand(string sql, Object paramValues = null)
     {
         SqlCommand cmd = CreateCommand(CreateConnection(), sql);
-        if (paramValues != null)
-        {
-            Type typ = paramValues.GetType();
-            PropertyInfo[] props = typ.GetProperties();
-
-            foreach (var p in props)
-                cmd.Parameters.Add(CreateParameter(p.Name, p.GetValue(paramValues)));
-        }
+        AddParamsFromObject(cmd, paramValues);
         return cmd;
     }
 
@@ -75,5 +68,17 @@ public class SqlServerDatabaseContext : DatabaseContext
         DataReaderObject = cmd.ExecuteReader(cmdBehavior);
 
         return (SqlDataReader)DataReaderObject;
+    }
+
+    private void AddParamsFromObject(SqlCommand cmd, Object paramValues)
+    {
+        if (paramValues != null)
+        {
+            Type typ = paramValues.GetType();
+            PropertyInfo[] props = typ.GetProperties();
+
+            foreach (var p in props)
+                cmd.Parameters.Add(CreateParameter(p.Name, p.GetValue(paramValues)));
+        }
     }
 }
