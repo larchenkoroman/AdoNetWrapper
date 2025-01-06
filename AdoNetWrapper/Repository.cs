@@ -11,23 +11,23 @@ public class Repository
 {
     public Repository(string cnn) => ConnectionString = cnn;
     public string ConnectionString { get; set; }
-    public List<TEntity> ExequteQuery<TEntity>(string sql, Dictionary<string, object> parameters = null)
+    public List<TEntity> ExequteQuery<TEntity>(string sql, Object paramValues = null)
     {
         List<TEntity> ret;
 
         using SqlServerDatabaseContext dbContext = new(this.ConnectionString);
-        dbContext.CreateCommand(sql, parameters);
+        dbContext.CreateCommand(sql, paramValues);
 
         ret = BuildEntityList<TEntity>(dbContext.CreateDataReader());
 
         return ret;
     }
-    public int ExecuteNonQuery(string sql, Dictionary<string, object> parameters = null)
+    public int ExecuteNonQuery(string sql, Object paramValues = null)
     {
         int ret;
         IDbCommand cmd;
         using SqlServerDatabaseContext dbContext = new(this.ConnectionString);
-        cmd = dbContext.CreateCommand(sql, parameters);
+        cmd = dbContext.CreateCommand(sql, paramValues);
         cmd.Connection.Open();
         ret = cmd.ExecuteNonQuery();
         return ret;

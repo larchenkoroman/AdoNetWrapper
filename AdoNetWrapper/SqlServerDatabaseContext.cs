@@ -26,10 +26,10 @@ public class SqlServerDatabaseContext : DatabaseContext
     {
         return new SqlConnection(connectString);
     }
-    public override IDbCommand CreateCommand(string sql, Dictionary<string, object> parameters = null)
+    public override IDbCommand CreateCommand(string sql, Object paramValues = null)
     {
         SqlCommand cmd = CreateCommand(CreateConnection(), sql);
-        AddParams(cmd, parameters);
+        AddParamsFromObject(cmd, paramValues);
         return cmd;
     }
 
@@ -70,14 +70,15 @@ public class SqlServerDatabaseContext : DatabaseContext
         return (SqlDataReader)DataReaderObject;
     }
 
-    private void AddParams(SqlCommand cmd, Dictionary<string, object> parameters = null)
+    private void AddParamsFromObject(SqlCommand cmd, Object paramValues)
     {
-        if (parameters != null && parameters.Count > 0)
+        if (paramValues != null)
         {
-            foreach (KeyValuePair<string, object> p in parameters)
-            {
-                cmd.Parameters.Add(CreateParameter(p.Key, p.Value));
-            }
+            Type typ = paramValues.GetType();
+            PropertyInfo[] props = typ.GetProperties();
+
+            foreach (var p in props)
+                cmd.Parameters.Add(CreateParameter(p.Name, p.GetValue(paramValues)));
         }
     }
 }

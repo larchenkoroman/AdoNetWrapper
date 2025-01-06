@@ -33,7 +33,7 @@ public abstract class DatabaseContext : IDisposable
 
     public abstract IDbConnection CreateConnection(string connectString);
 
-    public virtual IDbCommand CreateCommand(string sql, Dictionary<string, object> parameters = null)
+    public virtual IDbCommand CreateCommand(string sql, Object paramValues = null)
     {
         return CreateCommand(CreateConnection(), sql);
     }
