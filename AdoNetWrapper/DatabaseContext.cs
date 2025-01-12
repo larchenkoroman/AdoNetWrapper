@@ -1,13 +1,13 @@
-﻿#nullable disable
+﻿namespace AdoNetWrapper;
 
-namespace AdoNetWrapper;
-
+using Microsoft.Data.SqlClient;
+using System.ComponentModel.DataAnnotations.Schema;
 using System.Data;
+using System.Reflection;
+using System.Runtime.Intrinsics.Arm;
 
-/// <summary>
-/// Abstract base class for all 
-/// ADO.NET database operations
-/// </summary>
+public delegate void DataReaderAction(IDataReader dr);
+
 public abstract class DatabaseContext : IDisposable
 {
     public DatabaseContext(string connectString)
@@ -17,77 +17,142 @@ public abstract class DatabaseContext : IDisposable
     }
 
     public string ConnectionString { get; set; }
+    public IDbConnection Connection { get; set; }
     public string ParameterPrefix { get; set; }
-    public IDbCommand CommandObject { get; set; }
-    public IDataReader DataReaderObject { get; set; }
+    public IDbCommand Command { get; set; }
+    public IDataReader DataReader { get; set; }
 
     protected virtual void Init()
     {
         ParameterPrefix = string.Empty;
     }
 
-    public virtual IDbConnection CreateConnection()
-    {
-        return CreateConnection(ConnectionString);
-    }
-
-    public abstract IDbConnection CreateConnection(string connectString);
-
-    public virtual IDbCommand CreateCommand(string sql, Object paramValues = null)
-    {
-        return CreateCommand(CreateConnection(), sql);
-    }
-
-    public abstract IDbCommand CreateCommand(IDbConnection cnn, string sql);
-
+    public abstract IDbCommand CreateCommand(string sql, CommandType commandType = CommandType.Text);
+    public abstract IDbCommand CreateCommand(string sql, Object paramValues, CommandType commandType = CommandType.Text);
     public abstract IDataParameter CreateParameter(string paramName, object value);
-
-
+    public abstract void AddOutParameter(string paramName, DbType dbType);
     public abstract IDataParameter GetParameter(string paramName);
-
-    public virtual IDataReader CreateDataReader()
-    {
-        return CreateDataReader(CommandObject, CommandBehavior.CloseConnection);
-    }
-
-    public virtual IDataReader CreateDataReader(CommandBehavior cmdBehavior)
-    {
-        return CreateDataReader(CommandObject, cmdBehavior);
-    }
-
-    public virtual IDataReader CreateDataReader(IDbCommand cmd, CommandBehavior cmdBehavior = CommandBehavior.CloseConnection)
-    {
-        // Open Connection
-        cmd.Connection.Open();
-
-        // Create DataReader
-        DataReaderObject = cmd.ExecuteReader(cmdBehavior);
-
-        return DataReaderObject;
-    }
+    public abstract IDataReader CreateDataReader(CommandBehavior cmdBehavior = CommandBehavior.CloseConnection);
 
     public virtual void Dispose()
     {
         // Close/Dispose of data reader object
-        if (DataReaderObject != null)
+        if (DataReader != null)
         {
-            DataReaderObject.Close();
-            DataReaderObject.Dispose();
+            DataReader.Close();
+            DataReader.Dispose();
         }
 
         // Close/Dispose of command object
-        if (CommandObject != null)
+        if (Command != null)
         {
-            if (CommandObject.Connection != null)
+            if (Command.Connection != null)
             {
-                if (CommandObject.Transaction != null)
+                if (Command.Transaction != null)
                 {
-                    CommandObject.Transaction.Dispose();
+                    Command.Transaction.Dispose();
                 }
-                CommandObject.Connection.Close();
-                CommandObject.Connection.Dispose();
+                Command.Connection.Close();
+                Command.Connection.Dispose();
             }
-            CommandObject.Dispose();
+            Command.Dispose();
         }
+    }
+
+    public List<TEntity> ExequteQuery<TEntity>(string sql, Object paramValues = null)
+    {
+        List<TEntity> ret;
+        CreateCommand(sql, paramValues);
+        ret = BuildEntityList<TEntity>(CreateDataReader());
+        return ret;
+    }
+    public List<TEntity> BuildEntityList<TEntity>(IDataReader rdr)
+    {
+        List<TEntity> ret = new();
+        string columnName;
+
+        PropertyInfo[] props = typeof(TEntity).GetProperties();
+
+        while (rdr.Read())
+        {
+            TEntity entity = Activator.CreateInstance<TEntity>();
+
+            // Loop through columns in data reader
+            for (int index = 0; index < rdr.FieldCount; index++)
+            {
+                columnName = rdr.GetName(index);
+                PropertyInfo col = props.FirstOrDefault(col => col.Name == columnName);
+
+                if (col == null)
+                {
+                    // Is column name in a [Column] attribute?
+                    col = props.FirstOrDefault(
+                      c => c.GetCustomAttribute
+                        <ColumnAttribute>()?.Name == columnName);
+                }
+
+                if (col != null)
+                {
+                    // Get the value from the table
+                    var value = rdr[columnName];
+                    // Assign value to property if not null
+                    if (!value.Equals(DBNull.Value))
+                    {
+                        col.SetValue(entity, value, null);
+                    }
+                }
+            }
+            // Add new entity to the list
+            ret.Add(entity);
+        }
+
+        return ret;
+    }
+
+    public  void ExecuteDR(string sql, DataReaderAction drAction, CommandType commandType = CommandType.Text)
+    {
+        CreateCommand(sql, commandType);
+        IDataReader dr = CreateDataReader();
+        while (dr.Read())
+        {
+            drAction(dr);
+        }
+    }
+    public  void ExecuteDR(string sql, Object paramValues, DataReaderAction drAction, CommandType commandType = CommandType.Text)
+    {
+        CreateCommand(sql, paramValues, commandType);
+        IDataReader dr = CreateDataReader();
+        while (dr.Read())
+        {
+            drAction(dr);
+        }
+    }
+    public int ExecuteNonQuery()
+    {
+        int ret;
+        using SqlServerDatabaseContext dbContext = new(this.ConnectionString);
+        Command.Connection.Open();
+        ret = Command.ExecuteNonQuery();
+        return ret;
+    }
+    public int ExecuteNonQuery(string sql, CommandType commandType = CommandType.Text)
+    {
+        int ret;
+        IDbCommand cmd;
+        using SqlServerDatabaseContext dbContext = new(this.ConnectionString);
+        cmd = dbContext.CreateCommand(sql, commandType);
+        cmd.Connection.Open();
+        ret = cmd.ExecuteNonQuery();
+        return ret;
+    }
+    public int ExecuteNonQuery(string sql, Object paramValues, CommandType commandType = CommandType.Text)
+    {
+        int ret;
+        IDbCommand cmd;
+        using SqlServerDatabaseContext dbContext = new(this.ConnectionString);
+        cmd = dbContext.CreateCommand(sql, paramValues, commandType);
+        cmd.Connection.Open();
+        ret = cmd.ExecuteNonQuery();
+        return ret;
     }
 }

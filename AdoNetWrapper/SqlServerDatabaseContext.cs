@@ -6,14 +6,13 @@ using Microsoft.Data.SqlClient;
 
 namespace AdoNetWrapper;
 
-/// <summary>
-/// Database context using ADO.NET 
-/// for SQL Server Databases
-/// </summary>
 public class SqlServerDatabaseContext : DatabaseContext
 {
 
-    public SqlServerDatabaseContext(string connectString) : base(connectString) { }
+    public SqlServerDatabaseContext(string connectString) : base(connectString) 
+    {
+        Connection = new SqlConnection(connectString);
+    }
 
     protected override void Init()
     {
@@ -22,23 +21,19 @@ public class SqlServerDatabaseContext : DatabaseContext
         ParameterPrefix = "@";
     }
 
-    public override SqlConnection CreateConnection(string connectString)
+    public override IDbCommand CreateCommand(string sql, CommandType commandType = CommandType.Text)
     {
-        return new SqlConnection(connectString);
+        Command = new SqlCommand(sql, (SqlConnection) Connection);
+        Command.CommandType = commandType;
+        return Command;
     }
-    public override IDbCommand CreateCommand(string sql, Object paramValues = null)
+    public override IDbCommand CreateCommand(string sql, Object paramValues, CommandType commandType = CommandType.Text)
     {
-        SqlCommand cmd = CreateCommand(CreateConnection(), sql);
-        AddParamsFromObject(cmd, paramValues);
-        return cmd;
-    }
+        Command = new SqlCommand(sql, (SqlConnection) Connection);
+        Command.CommandType = commandType;
 
-    public override SqlCommand CreateCommand(IDbConnection cnn, string sql)
-    {
-        CommandObject = new SqlCommand(sql, (SqlConnection)cnn);
-        CommandObject.CommandType = CommandType.Text;
-
-        return (SqlCommand)CommandObject;
+        AddParamsFromObject(paramValues);
+        return Command;
     }
 
     public override SqlParameter CreateParameter(string paramName, object value)
@@ -49,28 +44,34 @@ public class SqlServerDatabaseContext : DatabaseContext
         }
         return new SqlParameter(paramName, value);
     }
-
+    public override void AddOutParameter(string paramName, DbType dbType)
+    {
+        if (!paramName.StartsWith(ParameterPrefix))
+        {
+            paramName = ParameterPrefix + paramName;
+        }
+        Command.Parameters.Add(new SqlParameter() {ParameterName = paramName, DbType = dbType, Direction = ParameterDirection.Output });
+    }
     public override SqlParameter GetParameter(string paramName)
     {
         if (!paramName.StartsWith(ParameterPrefix))
         {
             paramName = ParameterPrefix + paramName;
         }
-
-        return ((SqlCommand)CommandObject).Parameters[paramName];
+        return ((SqlCommand)Command).Parameters[paramName];
     }
 
-    public override SqlDataReader CreateDataReader(IDbCommand cmd, CommandBehavior cmdBehavior = CommandBehavior.CloseConnection)
+    public override SqlDataReader CreateDataReader(CommandBehavior cmdBehavior = CommandBehavior.CloseConnection)
     {
         // Open Connection
-        cmd.Connection.Open();
+        Command.Connection.Open();
         // Create DataReader
-        DataReaderObject = cmd.ExecuteReader(cmdBehavior);
+        DataReader = Command.ExecuteReader(cmdBehavior);
 
-        return (SqlDataReader)DataReaderObject;
+        return (SqlDataReader)DataReader;
     }
 
-    private void AddParamsFromObject(SqlCommand cmd, Object paramValues)
+    private void AddParamsFromObject(Object paramValues)
     {
         if (paramValues != null)
         {
@@ -78,7 +79,7 @@ public class SqlServerDatabaseContext : DatabaseContext
             PropertyInfo[] props = typ.GetProperties();
 
             foreach (var p in props)
-                cmd.Parameters.Add(CreateParameter(p.Name, p.GetValue(paramValues)));
+                Command.Parameters.Add(CreateParameter(p.Name, p.GetValue(paramValues)));
         }
     }
 }
