@@ -38,8 +38,8 @@ using (var dbcontext = DBContext.CreateDBContext())
 {
     dbcontext.ExecuteDR("dbo.AddTwoNums",
                         new { n1 = 3, n2 = 5 },
-                        (dr) => lst.Add(dr.GetData<int>("Result"))
-                        , CommandType.StoredProcedure
+                        (dr) => lst.Add(dr.GetData<int>("Result")),
+                        CommandType.StoredProcedure
                        );
     Console.WriteLine(lst[0].ToString());
 }
