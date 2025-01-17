@@ -1,8 +1,6 @@
-﻿#nullable disable
-
+﻿using Microsoft.Data.SqlClient;
 using System.Data;
 using System.Reflection;
-using Microsoft.Data.SqlClient;
 
 namespace AdoNetWrapper;
 

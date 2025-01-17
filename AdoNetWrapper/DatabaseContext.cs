@@ -1,10 +1,8 @@
 ﻿namespace AdoNetWrapper;
 
-using Microsoft.Data.SqlClient;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Data;
 using System.Reflection;
-using System.Runtime.Intrinsics.Arm;
 
 public delegate void DataReaderAction(IDataReader dr);
 
