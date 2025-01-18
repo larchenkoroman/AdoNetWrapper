@@ -1,7 +1,7 @@
 ﻿using AdoNetWrapper;
 
 namespace ConsoleApp;
-public static class DBContext
+public static class DBContextFactory
 {
     private static string _connectionString = "Data Source=(LocalDB)\\MSSQLLocalDB;Initial Catalog=TestDB;Integrated Security=True";
 

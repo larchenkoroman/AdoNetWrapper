@@ -3,7 +3,7 @@ using ConsoleApp;
 using System.Data;
 
 //UPDATE с параметрами, параметры передаются как анонимный объект
-using (var dbcontext = DBContext.CreateDBContext())
+using (var dbcontext = DBContextFactory.CreateDBContext())
 {
     dbcontext.ExecuteNonQuery("update g set Name = @Name from dbo.Goods as g where g.ID = @ID", new { ID = 3, Name = "Новый товар 225" });
 }
@@ -11,7 +11,7 @@ using (var dbcontext = DBContext.CreateDBContext())
 //Заполнение List<класс-модели-данных>
 //Имя свойства в классе отличается от имени поля, используется атрибут.
 Console.WriteLine("From List<Product>");
-using (var dbcontext = DBContext.CreateDBContext())
+using (var dbcontext = DBContextFactory.CreateDBContext())
 {
     List<Product> list = dbcontext.ExequteQuery<Product>("SELECT ID,Name,Amount FROM dbo.Goods");
     foreach (var item in list)
@@ -19,7 +19,7 @@ using (var dbcontext = DBContext.CreateDBContext())
 }
 
 //Хранимка с OUT параметром
-using (var dbcontext = DBContext.CreateDBContext())
+using (var dbcontext = DBContextFactory.CreateDBContext())
 {
     dbcontext.CreateCommand("dbo.AddTwoNums",
                         new { n1 = 3, n2 = 5 },
@@ -34,7 +34,7 @@ using (var dbcontext = DBContext.CreateDBContext())
 //Заполнение List<...>
 Console.WriteLine("\nFrom List<int>");
 List<int> lst = new();
-using (var dbcontext = DBContext.CreateDBContext())
+using (var dbcontext = DBContextFactory.CreateDBContext())
 {
     dbcontext.ExecuteDR("dbo.AddTwoNums",
                         new { n1 = 3, n2 = 5 },
